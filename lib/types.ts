@@ -316,6 +316,8 @@ export interface Modes {
   graph: "neo4j" | "embedded";
   billing: "flexprice" | "local";
   band: boolean;
+  /** Deal rooms mirrored into a Teamily conversation, one per deal. */
+  teamily: boolean;
   send: "simulate";
 }
 
@@ -350,6 +352,61 @@ export interface Meeting {
   createdAt: string;
 }
 
+/** One person in the team that works a deal: a name, what they do, and an optional chat handle. */
+export interface TeamMember {
+  id: string;
+  name: string;
+  role: string;
+  handle?: string | null;
+}
+
+/** Who a deal room opens with until the team is edited. Roles, not real people. */
+export const DEFAULT_TEAM: TeamMember[] = [
+  { id: "tm1", name: "CEO", role: "CEO", handle: null },
+  { id: "tm2", name: "Sales Director", role: "Sales Director", handle: null },
+  { id: "tm3", name: "Marketing Director", role: "Marketing Director", handle: null },
+  { id: "tm4", name: "Finance Director", role: "Finance Director", handle: null },
+];
+
+/** A line in a deal room. `from` is a member id, or "agent" for the agent's own posts. */
+export interface DealRoomMessage {
+  id: string;
+  at: string;
+  from: string;
+  kind: "brief" | "reply" | "note";
+  text: string;
+}
+
+/** A piece of the deal somebody owns. The rep ticks it off; the agent only rewords it. */
+export interface DealRoomTask {
+  id: string;
+  memberId: string;
+  text: string;
+  done: boolean;
+  doneAt: string | null;
+}
+
+/**
+ * The internal room a deal gets the moment its first email is recorded as sent: the team, the
+ * brief, and who owns what. The client is never in it until a rep presses Invite client, which
+ * is only offered once they have replied with interest.
+ */
+export interface DealRoom {
+  id: string;
+  leadId: string;
+  members: TeamMember[];
+  messages: DealRoomMessage[];
+  tasks: DealRoomTask[];
+  /** Set when a reply comes back with interest: what unlocks Invite client. */
+  positiveReply: boolean;
+  clientInvited: boolean;
+  invitedBy: Actor | null;
+  invitedAt: string | null;
+  /** The meeting the reply produced, once there is one, so the room links to the calendar. */
+  meetingId: string | null;
+  openedAt: string;
+}
+
 /** How much the writer may add that no checked fact backs.
     strict: nothing; what is left unbacked is taken out before the rep sees it.
     balanced: nothing on purpose; what slips through is marked for the rep.
@@ -359,6 +416,8 @@ export const FREEDOMS: Freedom[] = ["strict", "balanced", "open"];
 
 export interface Settings {
   freedom: Freedom;
+  /** Who sits in a deal room. Left out of older saved workspaces, so read it as `|| DEFAULT_TEAM`. */
+  team?: TeamMember[];
 }
 
 export interface Workspace {
@@ -386,6 +445,8 @@ export interface Workspace {
   doNotContact: string[]; // domains
   settings: Settings;
   meetings: Meeting[];
+  /** Left out of older saved workspaces, so read it as `|| []`. */
+  dealRooms?: DealRoom[];
 }
 
 export const COSTS = {

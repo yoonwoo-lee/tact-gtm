@@ -14,7 +14,8 @@
     "clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\"",
     "fresh": "node -e \"require('fs').rmSync('.data/cache',{recursive:true,force:true})\"",
     "setup:flexprice": "tsx scripts/setup-flexprice.ts",
-    "setup:band": "tsx scripts/setup-band.ts"
+    "setup:band": "tsx scripts/setup-band.ts",
+    "tunnel": "tsx scripts/tunnel.ts"
   },
   "dependencies": {
     "@gsap/react": "^2.1.2",

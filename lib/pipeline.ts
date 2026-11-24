@@ -5,6 +5,7 @@
 //   reviewer - checks every quote and every claim, and stops what it cannot back
 //   security - checks what is about to leave: links, addresses, opt-out
 import { classifyReply, draftMessage } from "./agents/outreach";
+import { noteReplyInDealRoom, openDealRoom } from "./dealroom";
 import { findAccounts, findCompetitors, findPeople, type StepReport } from "./agents/discover";
 import { inferIcp } from "./agents/icp";
 import { whyNobody, widerQueries, type Search2 } from "./agents/widen";
@@ -488,6 +489,13 @@ export function decideMessage(messageId: string, action: "approve" | "reject" | 
     if (message.contactId) s.graph.upsertEdge("CONTACTED_VIA", "product", message.contactId, { channel: "email", at: message.decidedAt, messageId });
     s.audit("rep", "Approved and sent", { leadId: lead.id, messageId, note: `To ${message.to}${message.editedByRep ? " (edited by the rep)" : ""}. Sending is simulated.` });
     if (lead.stage === "matched") setStage(s, lead, "contacted", "rep", "Message approved");
+    // The team gets a room for this deal. It opens once per lead, and a failure here must never
+    // be the reason an approved send is not recorded.
+    try {
+      openDealRoom(lead.id);
+    } catch (e) {
+      s.log("system", "step", `The deal room could not be opened: ${e instanceof Error ? e.message : String(e)}. The send is recorded.`);
+    }
   }
   s.touch();
 }
@@ -645,6 +653,12 @@ export async function logReply(leadId: string, text: string) {
     s.state.meetings = [...(s.state.meetings || []), meeting];
     s.audit("agent", "Proposed a meeting", { agent: "planner", leadId: lead.id, note: `${sayWhen(when.start)}${when.exact ? "" : " (a suggestion: the reply named no exact time)"}` });
     s.log("planner", "say", `${contact?.name || lead.company} agreed to talk. I put ${sayWhen(when.start)} on the calendar as a proposal${when.exact ? ", the time they named" : ": they named no exact time, so change it if needed"}. Confirm it under Pipeline.`, { to: "rep" });
+  }
+  // The team's room hears the reply last, so it can link the meeting the reply just produced.
+  try {
+    noteReplyInDealRoom(lead.id, result);
+  } catch (e) {
+    s.log("system", "step", `The deal room could not be updated: ${e instanceof Error ? e.message : String(e)}.`);
   }
   sortLeads(s);
   s.touch();

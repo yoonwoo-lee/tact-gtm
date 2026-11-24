@@ -19,7 +19,7 @@ const COLUMNS: { key: Stage; title: string; holds: Stage[] }[] = [
 const ORDER: Stage[] = ["matched", "contacted", "replied", "meeting", "won"];
 const EXAMPLE = "Thanks for reaching out. This is timely for us. Could you do a call on Tuesday at 2pm?";
 
-function Card({ lead, onReply, onOpen, wrote, act }: { lead: Lead; onReply: () => void; onOpen: () => void; wrote: number; act: Act }) {
+function Card({ lead, onReply, onOpen, wrote, act, room }: { lead: Lead; onReply: () => void; onOpen: () => void; wrote: number; act: Act; room: boolean }) {
   const contact = lead.contacts[0];
   return (
     <div
@@ -52,6 +52,11 @@ function Card({ lead, onReply, onOpen, wrote, act }: { lead: Lead; onReply: () =
         <span className={`chip ${lead.stageBy === "agent" ? "" : "chip-bright"}`} title={`Moved here by ${lead.stageBy === "agent" ? "the agent" : "you"}, ${ago(lead.stageAt)}`}>
           {lead.stageBy === "agent" ? "by agent" : "by you"}
         </span>
+        {room && (
+          <span className="chip" title="The team has a room for this deal: open the profile to read it">
+            Deal room
+          </span>
+        )}
         {lead.stage === "lost" && <span className="chip chip-line">Lost</span>}
         {lead.stage === "won" && <span className="chip chip-bright">Won</span>}
         {lead.warmPaths.length > 0 && (
@@ -185,7 +190,7 @@ export function PipelineTab({ ws, act, busy, onOpen }: { ws: Workspace; act: Act
               </div>
               <div className="grid gap-2 grid-cols-[minmax(0,1fr)]">
                 {cards.map((l) => (
-                  <Card key={l.id} lead={l} act={act} wrote={written(l.id).filter((m) => m.status !== "rejected").length} onReply={() => setReplyFor(l)} onOpen={() => (written(l.id).length ? setReading(l.id) : onOpen(l.id))} />
+                  <Card key={l.id} lead={l} act={act} room={(ws.dealRooms || []).some((r) => r.leadId === l.id)} wrote={written(l.id).filter((m) => m.status !== "rejected").length} onReply={() => setReplyFor(l)} onOpen={() => (written(l.id).length ? setReading(l.id) : onOpen(l.id))} />
                 ))}
               </div>
             </div>

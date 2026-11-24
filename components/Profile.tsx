@@ -7,7 +7,7 @@ import { cleanDomain } from "@/lib/logo";
 import { useLogo } from "./logos";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useRef, useState } from "react";
-import { COSTS, type Competitor, type Contact, type Lead, type Workspace } from "@/lib/types";
+import { COSTS, type Competitor, type Contact, type DealRoom, type Lead, type Workspace } from "@/lib/types";
 import type { Act } from "./BriefTab";
 import { EmailChip } from "./LeadsTab";
 import { COST_NOTE, type LeadView } from "./leads";
@@ -112,6 +112,78 @@ function More({ title, count, children, open: start = false }: { title: string; 
   );
 }
 
+/**
+ * The deal room: who is on this deal inside the company, what the agent told them, and what each
+ * of them has to do. The client is not in here. The button that puts them in only appears once
+ * they have replied with interest, and pressing it is the rep's, not the agent's.
+ */
+function DealRoomPanel({ room, lead, ws, act, busy }: { room: DealRoom; lead: Lead; ws: Workspace; act: Act; busy: Set<string> }) {
+  const who = (id: string) => room.members.find((m) => m.id === id) || null;
+  const meeting = room.meetingId ? (ws.meetings || []).find((m) => m.id === room.meetingId) || null : null;
+  return (
+    <div className="grid gap-4">
+      <div className="flex gap-1.5 flex-wrap">
+        {room.members.map((m) => (
+          <span key={m.id} className="chip !py-1.5 !px-3" title={m.role}>
+            <Monogram name={m.name} size={20} />
+            {m.role}
+          </span>
+        ))}
+        {room.clientInvited && (
+          <span className="chip chip-bright !py-1.5 !px-3">
+            <Icon name="check" size={13} />
+            Client invited
+          </span>
+        )}
+      </div>
+
+      <div className="grid gap-2.5">
+        {room.messages.map((m) => (
+          <div key={m.id} className="box p-3">
+            <div className="text-faint text-[12px] mb-1.5">
+              {m.from === "outside" ? "Said from outside this app" : m.kind === "brief" ? "The brief" : m.kind === "reply" ? "Their reply" : "Note"}
+            </div>
+            <div className="text-[14px] leading-relaxed whitespace-pre-line">{m.text}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid gap-2">
+        {room.tasks.map((task) => (
+          <label key={task.id} className="person !cursor-pointer" style={{ opacity: task.done ? 0.6 : 1 }}>
+            <input
+              type="checkbox"
+              checked={task.done}
+              disabled={busy.has(`task-${task.id}`)}
+              onChange={(e) => act({ type: "task", leadId: lead.id, taskId: task.id, done: e.target.checked }, `task-${task.id}`)}
+              aria-label={task.text}
+            />
+            <div className="min-w-0 flex-1 leading-snug">
+              <div className={task.done ? "line-through" : "font-semibold"}>{task.text}</div>
+              <div className="text-soft text-[13px]">{who(task.memberId)?.role || "Somebody"}</div>
+            </div>
+          </label>
+        ))}
+      </div>
+
+      {meeting && (
+        <div className="text-[13.5px] text-soft">
+          The meeting from their reply is on the calendar{meeting.status === "booked" ? ", booked" : ", waiting for you to book it"}.
+        </div>
+      )}
+
+      {room.positiveReply && !room.clientInvited && (
+        <div className="waybox p-3.5 flex gap-2.5 items-center">
+          <div className="flex-1 text-[13.5px] leading-snug">They replied with interest. Bringing them in here is your call, not the agent&apos;s.</div>
+          <button className="btn" disabled={busy.has("invite")} onClick={() => act({ type: "inviteClient", leadId: lead.id }, "invite")}>
+            Invite client
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Head({ children }: { children: React.ReactNode }) {
   return <h3 className="dex-h">{children}</h3>;
 }
@@ -205,6 +277,7 @@ function Entry({
 }) {
   const { lead, contact, draft, sent, signal } = view;
   const [domain, setDomain] = useState("");
+  const room = (ws.dealRooms || []).find((r) => r.leadId === lead.id) || null;
   // Opened from a person on the graph who is not the one to write to: show the others straight away.
   const others = lead.contacts.filter((c) => c.id !== contact?.id);
   const focusOther = !!focus && others.some((c) => c.id === focus);
@@ -356,6 +429,11 @@ function Entry({
                   </div>
                 ))}
               </div>
+            </More>
+          )}
+          {room && (
+            <More title="Deal room" count={room.tasks.filter((t) => !t.done).length} open={room.positiveReply && !room.clientInvited}>
+              <DealRoomPanel room={room} lead={lead} ws={ws} act={act} busy={busy} />
             </More>
           )}
           <More title={`Why it scored ${lead.score.total}/100`}>

@@ -41,6 +41,9 @@ yarn-error.log*
 next-env.d.ts
 .data*
 
+# the tunnel settings: they carry the MCP token
+*.local.json
+
 # keep the example
 !.env.example
 .data-test*

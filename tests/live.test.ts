@@ -183,7 +183,9 @@ test("a full run through the live code paths", async (t) => {
   t.diagnostic(`one run: ${seen.gemini.filter((c) => c.model === "good-model").length} answered model calls, ${seen.tavily} searches, ${seen.hunter} Hunter lookups, ${seen.events.length} usage events`);
 
   await t.test("every part is on its live service, and the run finishes", () => {
-    assert.deepEqual({ ...s.state.modes, graph: undefined, send: undefined }, { llm: "gemini", search: "tavily", enrich: "hunter", billing: "flexprice", band: true, graph: undefined, send: undefined });
+    // Teamily is left unset here: this run proves the services a run depends on, and a deal
+    // room mirrored into a messenger is not one of them. tests/teamily.test.ts covers it off.
+    assert.deepEqual({ ...s.state.modes, graph: undefined, send: undefined }, { llm: "gemini", search: "tavily", enrich: "hunter", billing: "flexprice", band: true, teamily: false, graph: undefined, send: undefined });
     assert.equal(s.state.run.status, "done", s.state.run.error || feed());
   });
 

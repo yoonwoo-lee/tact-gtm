@@ -186,6 +186,27 @@ Stages: Matched → Contacted → Replied → Meeting booked → Closed (won or 
 
 Analytics are computed from the audit trail on the page: stage-to-stage conversion, by segment, by tier, replies per message for variant A (signal-led) and variant B (problem-led), and how many moves were made by the agent versus the rep.
 
+### The Deal Room
+
+`decideMessage(id, "approve")` is the one place a message counts as sent, so it is the one place a deal room opens (`openDealRoom`, `lib/dealroom.ts`). The call is wrapped: a room that cannot be built is logged and the send stays recorded.
+
+- **Shape.** `DealRoom { id, leadId, members, messages[], tasks[], positiveReply, clientInvited, invitedBy, invitedAt, meetingId, openedAt }`, held on the workspace as `dealRooms` and saved with it. Older saved workspaces have no such field, so it is read as `|| []`.
+- **Idempotent.** One room per lead. `openDealRoom` returns the room that is already there rather than building a second one, so a second approval, a replay, or a hot reload cannot double it.
+- **Facts only.** The brief is assembled from what the rest of the app already checked: the strongest signal whose `evidence.verified` is true and the source it cites, `lead.score.parts`, `lead.warmPaths[0]`, and the subject and first line of the sent `Message`. No model call is made to write it, so there is nothing new to verify.
+- **Tasks by role.** Members are matched by what their role says (`/sales/i`, `/marketing/i`, `/finance/i`, `/ceo|chief executive|founder/i`), so an edited team still gets the right tasks and a role nobody holds simply gets none. The CEO task is gated on `score.tier === "A"`.
+- **On a reply.** `logReply` calls `noteReplyInDealRoom` last, after the meeting has been proposed, so the room can link the `Meeting` the reply produced. A positive intent sets `positiveReply`, which is what unlocks the invite.
+- **The gate.** `inviteClient` throws unless `positiveReply` is set, and records `invitedBy: "rep"` with an audit entry. Nothing in the agent's path calls it.
+- **Band.** Opening a room and a reply arriving in one are said in the agents' feed through `store.log(..., "say", ...)`, which already mirrors to Band when keys are set, so a deal room can be followed from Band Desktop with the rest of the hand-offs. No new provider, and no Band means no difference.
+
+### The deal rooms over MCP (`app/api/mcp/route.ts`)
+
+JSON-RPC 2.0 over HTTP, protocol `2025-06-18`, hand-rolled: `initialize`, `ping`, `tools/list`, `tools/call`, and a 202 for notifications. No SDK, no new dependency.
+
+- **Four tools.** `list_deal_rooms`, `get_deal_room`, `post_to_deal_room`, `complete_task`, reading through `lib/dealroom.ts` like the app's own screen does.
+- **What is deliberately absent.** No tool approves a draft, records a send, or invites the client. Those are the two human gates in this app, and nothing reachable over a public URL can reach them. `tests/mcp.test.ts` asserts the tool list and that a call to `invite_client` is an error.
+- **Shut by default.** No `CONNET_MCP_TOKEN`, no endpoint: it answers 404, since a public URL (ngrok) is what makes it reachable at all. With a token set, every call must carry it as `Authorization: Bearer` or `x-api-key`.
+- **Marked.** Anything said through it is stored with `from: "outside"`, shown as **Said from outside this app**, and written to the audit trail, so a line in a room always says where it came from.
+
 ## 7. Metering and the credit gate
 
 `store.spend()` writes every metered action to a local ledger and sends it to Flexprice (`POST /events` with `event_name`, `external_customer_id`, `event_id`, `properties`).

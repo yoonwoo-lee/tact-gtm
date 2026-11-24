@@ -39,6 +39,16 @@ export const config = {
   },
   bandHost: (env("BAND_API_HOST") || "https://app.band.ai/api/v1").replace(/\/+$/, ""),
 
+  // Mirror deal rooms into Teamily (teamily.ai). The agent's own REST surface:
+  // Agent API -> Setup -> RESTful API for servers. Missing either and it stays local only.
+  teamilyToken: env("TEAMILY_AGENT_TOKEN"),
+  teamilyAgentId: env("TEAMILY_AGENT_ID"),
+  teamilyHost: (env("TEAMILY_API_HOST") || "https://teamily.ai/v1").replace(/\/+$/, ""),
+
+  // Lets an outside agent work the deal rooms through /api/mcp. Unset: that endpoint
+  // is off, which is what you want, because reaching it needs a public URL.
+  mcpToken: env("CONNET_MCP_TOKEN"),
+
   // TACT_SAMPLE=1 forces sample data everywhere (the safe demo, no network at all).
   forceSample: env("TACT_SAMPLE") === "1",
   startCredits: Number(env("TACT_START_CREDITS") || 30),
@@ -60,6 +70,7 @@ export function modes(): Modes {
     graph: !s && config.neo4jUri && config.neo4jPassword ? "neo4j" : "embedded",
     billing: !s && config.flexpriceKey ? "flexprice" : "local",
     band: !s && !!config.bandChatId && !!config.bandKeys.planner,
+    teamily: !s && !!config.teamilyToken && !!config.teamilyAgentId,
     send: "simulate",
   };
 }

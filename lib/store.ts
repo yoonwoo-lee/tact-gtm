@@ -9,7 +9,7 @@ import { Graph } from "./graph";
 import { bandPost } from "./providers/band";
 import { lastError as billingError, readWallet, trackUsage } from "./providers/billing";
 import { hooks } from "./providers/hooks";
-import type { Activity, Actor, AgentName, AuditEntry, LedgerEntry, RunStats, Source, Workspace } from "./types";
+import { DEFAULT_TEAM, type Activity, type Actor, type AgentName, type AuditEntry, type LedgerEntry, type RunStats, type Source, type Workspace } from "./types";
 
 export const emptyStats = (): RunStats => ({
   searches: 0,
@@ -44,8 +44,9 @@ function fresh(): Workspace {
     graph: { nodes: [], edges: [] },
     modes: modes(),
     doNotContact: [],
-    settings: { freedom: "balanced" },
+    settings: { freedom: "balanced", team: DEFAULT_TEAM },
     meetings: [],
+    dealRooms: [],
   };
 }
 

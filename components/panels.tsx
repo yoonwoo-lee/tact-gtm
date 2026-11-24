@@ -78,6 +78,7 @@ export function Connections({ ws }: { ws: Workspace }) {
     { name: "Knowledge graph", vendor: m.graph === "neo4j" ? "Neo4j" : "Embedded graph", note: "", live: m.graph === "neo4j" },
     { name: "Usage billing", vendor: "Flexprice", note: "local ledger", live: m.billing === "flexprice" },
     { name: "Agent room", vendor: "Band", note: "in this app only", live: !!m.band },
+    { name: "Deal rooms", vendor: "Teamily", note: "in this app only", live: !!m.teamily },
     { name: "Sending", vendor: "Simulated", note: "nothing leaves this machine", live: false },
   ];
   return (

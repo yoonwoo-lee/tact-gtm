@@ -1,5 +1,6 @@
 // Everything the rep can do after a run, as one endpoint: { type, ... }.
 import { decideClaim, decideExpansion, decideMeeting, decideMessage, setAddress, draftLead, enrichLead, logReply, moveStage, scanJobs, setDomain, setFreedom, suppress, topUp } from "@/lib/pipeline";
+import { completeTask, inviteClient } from "@/lib/dealroom";
 import { store } from "@/lib/store";
 import { STAGES, type Freedom, type Stage } from "@/lib/types";
 
@@ -52,6 +53,12 @@ export async function POST(request: Request) {
         break;
       case "scan":
         return Response.json({ ok: true, result: await scanJobs() });
+      case "inviteClient":
+        inviteClient(str(body.leadId));
+        break;
+      case "task":
+        completeTask(str(body.leadId), str(body.taskId), body.done !== false);
+        break;
       case "suppress":
         suppress(str(body.leadId));
         break;
